@@ -2,35 +2,61 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSlug } from '../SlugContext';
+import { initSimpleWalletWeb3, initSimpleWalletContract, initSimpleWalletAccounts, getTransactionsByAddress, getStatisticsByAddress } from '../../funcs/SimpleWallet';
+import { initUserProfileWeb3, initUserProfileContract, initUserProfileAccounts, getAllUserProfiles } from '../../funcs/UserProfil';
+import Web3 from 'web3';
 
 export default function User() {
     const slug = useSlug();
-
-    const [displayText, setDisplayText] = useState("");
-    const [hovered, setHovered] = useState(false);
+    const [userHovered, setUserHovered] = useState<string | null>(null);
+    const [users, setUsers] = useState<string[]>([]);
+    const [transactions, setTransactions] = useState<string[] | any>([]);
 
     useEffect(() => {
-        let timeoutId: NodeJS.Timeout;
+        const initBlockchain = async () => {
 
-        if (hovered) {
-            timeoutId = setTimeout(() => {
-                setDisplayText(slug);
-            }, 100);
+            const web3UserProfileInstance = await initUserProfileWeb3();
+            const contractUserProfileInstance = await initUserProfileContract(web3UserProfileInstance);
+            const accountsListUserProfile = await initUserProfileAccounts(web3UserProfileInstance);
 
-            return () => {
-                clearTimeout(timeoutId);
-            };
-        } else {
-            setDisplayText(slug.slice(0, 4) + ' ... ' + slug.slice(-4));
-        }
-    }, [hovered, slug]);
+            const allProfiles = await getAllUserProfiles(contractUserProfileInstance);
+            const filteredProfiles = allProfiles.filter((profile: { userAddress: any; }) => profile.userAddress !== accountsListUserProfile[0]);
+            setUsers(filteredProfiles);
 
-    const handleMouseOver = () => {
-        setHovered(true);
+            const web3SimpleWalletInstance = await initSimpleWalletWeb3();
+            const contractSimpleWalletInstance = await initSimpleWalletContract(web3SimpleWalletInstance);
+            const accountsListSimpleWallet = await initSimpleWalletAccounts(web3SimpleWalletInstance);
+
+            setTransactions(await getTransactionsByAddress(contractSimpleWalletInstance, slug));
+
+        };
+        initBlockchain();
+
+    }, []);
+
+
+
+    function calculateReceiverSumByAddress(adresse: any) {
+        const sum = transactions
+            .filter((transaction: { recipient: any; }) => transaction.recipient === adresse)
+            .reduce((accumulator: any, transaction: { amount: any; }) => accumulator + BigInt(transaction.amount), BigInt(0))
+        return sum;
+    }
+
+    function calculateSenderSumByAddress(adresse: any) {
+        const sum = transactions
+            .filter((transaction: { sender: any; }) => transaction.sender === adresse)
+            .reduce((accumulator: any, transaction: { amount: any; }) => accumulator + BigInt(transaction.amount), BigInt(0))
+        return sum;
+    }
+
+
+    const handleMouseOver = (address: string) => {
+        setUserHovered(address);
     };
 
     const handleMouseOut = () => {
-        setHovered(false);
+        setUserHovered(null);
     };
 
     return <main>
@@ -79,475 +105,61 @@ export default function User() {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200 py-2">
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-medium">
-                                    Kanda Geedoo
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    geedookanda06@gmail.com
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className=' flex justify-center'>
-                                        <div
-                                            onMouseOver={handleMouseOver}
-                                            onMouseOut={handleMouseOut}
-                                            className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${hovered ? 'overflow-visible transition-all duration-700' : ''}`}
-                                        >
-                                            <span className="overflow-hidden whitespace-nowrap">
-                                                {displayText}
+                            {
+                                users?.map((user: any, key: any) => (
+                                    <tr key={key}>
+                                        <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
+                                            {key + 1}
+                                        </td>
+                                        <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-semibold">
+                                            {user.username}
+                                        </td>
+                                        <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
+                                            {user.email}
+                                        </td>
+                                        <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
+                                            <span className='flex justify-center'>
+                                                <div
+                                                    onMouseOver={() => handleMouseOver(user.userAddress)}
+                                                    onMouseOut={handleMouseOut}
+                                                    className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${userHovered === user.userAddress ? 'overflow-visible transition-all duration-700' : ''}`}
+                                                >
+                                                    <span className="overflow-hidden whitespace-nowrap">
+                                                        {userHovered === user.userAddress ? user.userAddress : user.userAddress.slice(0, 4) + ' ... ' + user.userAddress.slice(-4)}
+                                                    </span>
+                                                </div>
                                             </span>
-                                        </div>
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    23 ans
-                                </td>
+                                        </td>
+                                        <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
+                                            {user.age.toString()} ans
+                                        </td>
 
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
-                                    <div className='flex items-center space-x-2 justify-center'>
-                                        <div>
-                                            <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                        </div>
-                                        <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
+                                        <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
+                                            <div className='flex items-center space-x-2 justify-center'>
+                                                <div>
+                                                    <span className='font-medium text-xl'> {
+                                                        Web3.utils.fromWei(calculateReceiverSumByAddress(user.userAddress), 'ether')?.toString()
+                                                    } </span> <small className='text-gray-400'>ETH</small>
+                                                </div>
+                                                <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
 
-                                    <div>
-                                        <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                    </div>
-                                    <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-medium">
-                                    Kanda Geedoo
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    geedookanda06@gmail.com
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className=' flex justify-center'>
-                                        <div
-                                            onMouseOver={handleMouseOver}
-                                            onMouseOut={handleMouseOut}
-                                            className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${hovered ? 'overflow-visible transition-all duration-700' : ''}`}
-                                        >
-                                            <span className="overflow-hidden whitespace-nowrap">
-                                                {displayText}
+                                            <div>
+                                                <span className='font-medium text-xl'> {
+                                                    Web3.utils.fromWei(calculateSenderSumByAddress(user.userAddress), 'ether')?.toString()
+                                                } </span> <small className='text-gray-400'>ETH</small>
+                                            </div>
+                                            <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
                                             </span>
-                                        </div>
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    23 ans
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
-                                    <div className='flex items-center space-x-2 justify-center'>
-                                        <div>
-                                            <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                        </div>
-                                        <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
-
-                                    <div>
-                                        <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                    </div>
-                                    <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-medium">
-                                    Kanda Geedoo
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    geedookanda06@gmail.com
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className=' flex justify-center'>
-                                        <div
-                                            onMouseOver={handleMouseOver}
-                                            onMouseOut={handleMouseOut}
-                                            className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${hovered ? 'overflow-visible transition-all duration-700' : ''}`}
-                                        >
-                                            <span className="overflow-hidden whitespace-nowrap">
-                                                {displayText}
-                                            </span>
-                                        </div>
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    23 ans
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
-                                    <div className='flex items-center space-x-2 justify-center'>
-                                        <div>
-                                            <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                        </div>
-                                        <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
-
-                                    <div>
-                                        <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                    </div>
-                                    <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-medium">
-                                    Kanda Geedoo
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    geedookanda06@gmail.com
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className=' flex justify-center'>
-                                        <div
-                                            onMouseOver={handleMouseOver}
-                                            onMouseOut={handleMouseOut}
-                                            className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${hovered ? 'overflow-visible transition-all duration-700' : ''}`}
-                                        >
-                                            <span className="overflow-hidden whitespace-nowrap">
-                                                {displayText}
-                                            </span>
-                                        </div>
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    23 ans
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
-                                    <div className='flex items-center space-x-2 justify-center'>
-                                        <div>
-                                            <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                        </div>
-                                        <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
-
-                                    <div>
-                                        <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                    </div>
-                                    <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-medium">
-                                    Kanda Geedoo
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    geedookanda06@gmail.com
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className=' flex justify-center'>
-                                        <div
-                                            onMouseOver={handleMouseOver}
-                                            onMouseOut={handleMouseOut}
-                                            className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${hovered ? 'overflow-visible transition-all duration-700' : ''}`}
-                                        >
-                                            <span className="overflow-hidden whitespace-nowrap">
-                                                {displayText}
-                                            </span>
-                                        </div>
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    23 ans
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
-                                    <div className='flex items-center space-x-2 justify-center'>
-                                        <div>
-                                            <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                        </div>
-                                        <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
-
-                                    <div>
-                                        <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                    </div>
-                                    <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
-                                    </span>
-                                </td>
-                            </tr>  <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-medium">
-                                    Kanda Geedoo
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    geedookanda06@gmail.com
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className=' flex justify-center'>
-                                        <div
-                                            onMouseOver={handleMouseOver}
-                                            onMouseOut={handleMouseOut}
-                                            className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${hovered ? 'overflow-visible transition-all duration-700' : ''}`}
-                                        >
-                                            <span className="overflow-hidden whitespace-nowrap">
-                                                {displayText}
-                                            </span>
-                                        </div>
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    23 ans
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
-                                    <div className='flex items-center space-x-2 justify-center'>
-                                        <div>
-                                            <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                        </div>
-                                        <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
-
-                                    <div>
-                                        <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                    </div>
-                                    <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-medium">
-                                    Kanda Geedoo
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    geedookanda06@gmail.com
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className=' flex justify-center'>
-                                        <div
-                                            onMouseOver={handleMouseOver}
-                                            onMouseOut={handleMouseOut}
-                                            className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${hovered ? 'overflow-visible transition-all duration-700' : ''}`}
-                                        >
-                                            <span className="overflow-hidden whitespace-nowrap">
-                                                {displayText}
-                                            </span>
-                                        </div>
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    23 ans
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
-                                    <div className='flex items-center space-x-2 justify-center'>
-                                        <div>
-                                            <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                        </div>
-                                        <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
-
-                                    <div>
-                                        <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                    </div>
-                                    <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-medium">
-                                    Kanda Geedoo
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    geedookanda06@gmail.com
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className=' flex justify-center'>
-                                        <div
-                                            onMouseOver={handleMouseOver}
-                                            onMouseOut={handleMouseOut}
-                                            className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${hovered ? 'overflow-visible transition-all duration-700' : ''}`}
-                                        >
-                                            <span className="overflow-hidden whitespace-nowrap">
-                                                {displayText}
-                                            </span>
-                                        </div>
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    23 ans
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
-                                    <div className='flex items-center space-x-2 justify-center'>
-                                        <div>
-                                            <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                        </div>
-                                        <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
-
-                                    <div>
-                                        <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                    </div>
-                                    <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-medium">
-                                    Kanda Geedoo
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    geedookanda06@gmail.com
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className=' flex justify-center'>
-                                        <div
-                                            onMouseOver={handleMouseOver}
-                                            onMouseOut={handleMouseOut}
-                                            className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${hovered ? 'overflow-visible transition-all duration-700' : ''}`}
-                                        >
-                                            <span className="overflow-hidden whitespace-nowrap">
-                                                {displayText}
-                                            </span>
-                                        </div>
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    23 ans
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
-                                    <div className='flex items-center space-x-2 justify-center'>
-                                        <div>
-                                            <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                        </div>
-                                        <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
-
-                                    <div>
-                                        <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                    </div>
-                                    <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center uppercase font-medium">
-                                    Kanda Geedoo
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    geedookanda06@gmail.com
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className=' flex justify-center'>
-                                        <div
-                                            onMouseOver={handleMouseOver}
-                                            onMouseOut={handleMouseOut}
-                                            className={`text-blue-600 bg-blue-100 py-2 rounded-full px-3 relative overflow-hidden whitespace-nowrap ${hovered ? 'overflow-visible transition-all duration-700' : ''}`}
-                                        >
-                                            <span className="overflow-hidden whitespace-nowrap">
-                                                {displayText}
-                                            </span>
-                                        </div>
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    23 ans
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
-                                    <div className='flex items-center space-x-2 justify-center'>
-                                        <div>
-                                            <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                        </div>
-                                        <span className='p-2 flex bg-red-50 rounded-sm text-red-600 flex'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M9 5v2h6.59L4 18.59L5.41 20L17 8.41V15h2V5z" /></svg>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="py-1.5 px-2 flex items-center text-sm text-gray-700 max-w-[300px] text-center space-x-2 justify-center">
-
-                                    <div>
-                                        <span className='font-medium text-xl'> 1500 </span> <small className='text-gray-400'>ETH</small>
-                                    </div>
-                                    <span className='p-2 flex bg-blue-50 rounded-sm text-blue-600'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 4.71a.996.996 0 0 0-1.41 0L7 15.59V10c0-.55-.45-1-1-1s-1 .45-1 1v8c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8.41L19.3 6.11c.38-.38.38-1.02 0-1.4" /></svg>
-                                    </span>
-                                </td>
-                            </tr>
+                                        </td>
+                                    </tr>
+                                ))
+                            }
                         </tbody>
                     </table>
                 </div>
