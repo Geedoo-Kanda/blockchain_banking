@@ -37,10 +37,10 @@ export default function User() {
         <div className='flex justify-between my-3 items-center'>
             <div className='text-3xl text-gray-700 font-bold'>Les comptes</div>
             <div className='flex justify-end space-x-2'>
-                <span className='bg-gray-200 p-2 rounded-full text-gray-600'>
+                <span className='bg-white shadow-md shadow-gray-100 p-2 rounded-full text-gray-600'>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256"><path fill="currentColor" d="M232.49 215.51L185 168a92.12 92.12 0 1 0-17 17l47.53 47.54a12 12 0 0 0 17-17ZM44 112a68 68 0 1 1 68 68a68.07 68.07 0 0 1-68-68" /></svg>
                 </span>
-                <span className='bg-gray-200 p-2 rounded-full text-gray-600'>
+                <span className='bg-white shadow-md shadow-gray-100 p-2 rounded-full text-gray-600'>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M27 25c0 1.657-4.925 3-11 3S5 26.657 5 25m22 0c0-1.47-3.88-2.694-9-2.95M27 25c0-2-.2-6.2-3-9c-2.986-2.986-.513-7.427-5-8.668M5 25c0-1.47 3.88-2.694 9-2.95M5 25c0-2 .2-6.2 3-9c2.986-2.986.513-7.427 5-8.668m1 14.717a40.015 40.015 0 0 1 4 0m-4 0V23a2 2 0 1 0 4 0v-.95M13 7.331C13.773 7.12 14.751 7 16 7s2.227.119 3 .332m-6 0V7a3 3 0 0 1 6 0v.332" /></svg>
                 </span>
             </div>

@@ -1,6 +1,6 @@
 import Web3 from 'web3';
-import SimpleWalletContract from './SimpleWallet.json'; 
-import { abi as SimpleWalletABI } from './SimpleWallet.json'; 
+import SimpleWalletContract from '../../../build/contracts/SimpleWallet.json'; 
+import { abi as SimpleWalletABI } from '../../../build/contracts/SimpleWallet.json'; 
 
 // Initialiser Web3
 const initSimpleWalletWeb3 = async () => {

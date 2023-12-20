@@ -17,8 +17,8 @@ export default function UserLayout({
 }) {
 
   const slugToAddress = (slug: string | any[]) => {
-    const paddedSlug = slug + '==='.slice((slug.length + 3) % 4); // Ajoutez des caractères d'espacement
-    const address = atob(paddedSlug); // Utilisez atob pour décoder depuis base64
+    const paddedSlug = slug + '==='.slice((slug.length + 3) % 4);
+    const address = atob(paddedSlug);
     return address;
   };
 

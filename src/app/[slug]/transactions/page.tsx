@@ -1,19 +1,64 @@
 "use client"
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSlug } from '../SlugContext';
+import Modal from '@/app/components/Modal';
+import TransactionForm from '@/app/components/TransactionForm';
+import { initSimpleWalletWeb3, initSimpleWalletContract, initSimpleWalletAccounts, getTransactionsByAddress, getStatisticsByAddress } from '../../funcs/SimpleWallet';
+import { initUserProfileWeb3, initUserProfileContract, initUserProfileAccounts, getAllUserProfiles } from '../../funcs/UserProfil';
+import Web3 from 'web3';
+
 
 export default function User() {
     const slug = useSlug();
+    const [modal, setmodal] = useState<any>(false);
+    const [users, setUsers] = useState<string[]>([]);
+    const [transactions, setTransactions] = useState<string[]>([]);
+    const [stat, setStat] = useState<string[]>([]);
+    const web3 = new Web3(window.ethereum);
+    const [contractSimpleWallet, setContractSimpleWallet] = useState<any | null>(null);
+    const [accountsSimpleWallet, setAccountsSimpleWallet] = useState<string[]>([]);
+
+    useEffect(() => {
+        const initBlockchain = async () => {
+
+            const web3UserProfileInstance = await initUserProfileWeb3();
+            const contractUserProfileInstance = await initUserProfileContract(web3UserProfileInstance);
+            const accountsListUserProfile = await initUserProfileAccounts(web3UserProfileInstance);
+
+            setUsers(await getAllUserProfiles(contractUserProfileInstance));
+
+            const web3SimpleWalletInstance = await initSimpleWalletWeb3();
+            const contractSimpleWalletInstance = await initSimpleWalletContract(web3SimpleWalletInstance);
+            const accountsListSimpleWallet = await initSimpleWalletAccounts(web3SimpleWalletInstance);
+
+            setTransactions(await getTransactionsByAddress(contractSimpleWalletInstance, slug));
+            setStat(await getStatisticsByAddress(contractSimpleWalletInstance, slug));
+
+            setContractSimpleWallet(contractSimpleWalletInstance);
+            setAccountsSimpleWallet(accountsListSimpleWallet);
+        };
+        initBlockchain();
+    }, []);
+
+    const Add = () => {
+        setmodal(true);
+    };
+
+    const closeModal = async () => {
+        setmodal(false);
+        setTransactions(await getTransactionsByAddress(contractSimpleWallet, slug));
+        setStat(await getStatisticsByAddress(contractSimpleWallet, slug));
+    };
 
     return <main>
         <div className='flex justify-between my-3 items-center'>
             <div className='text-3xl text-gray-700 font-bold'>Mes transactions</div>
             <div className='flex justify-end space-x-2'>
-                <span className='bg-gray-200 p-2 rounded-full text-gray-600'>
+                <span className='bg-white shadow-md shadow-gray-100 p-2 rounded-full text-gray-600'>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256"><path fill="currentColor" d="M232.49 215.51L185 168a92.12 92.12 0 1 0-17 17l47.53 47.54a12 12 0 0 0 17-17ZM44 112a68 68 0 1 1 68 68a68.07 68.07 0 0 1-68-68" /></svg>
                 </span>
-                <span className='bg-gray-200 p-2 rounded-full text-gray-600'>
+                <span className='bg-white shadow-md shadow-gray-100 p-2 rounded-full text-gray-600'>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M27 25c0 1.657-4.925 3-11 3S5 26.657 5 25m22 0c0-1.47-3.88-2.694-9-2.95M27 25c0-2-.2-6.2-3-9c-2.986-2.986-.513-7.427-5-8.668M5 25c0-1.47 3.88-2.694 9-2.95M5 25c0-2 .2-6.2 3-9c2.986-2.986.513-7.427 5-8.668m1 14.717a40.015 40.015 0 0 1 4 0m-4 0V23a2 2 0 1 0 4 0v-.95M13 7.331C13.773 7.12 14.751 7 16 7s2.227.119 3 .332m-6 0V7a3 3 0 0 1 6 0v.332" /></svg>
                 </span>
             </div>
@@ -27,7 +72,11 @@ export default function User() {
                     <h2 className='text-md font-medium text-gray-700'>Totale reception</h2>
                 </div>
                 <div className='flex items-center space-x-4'>
-                    <h1 className='text-bold text-4xl mt-2 text-gray-800'>4,62 <small className='text-sm text-gray-700'>ETH</small></h1> <span className='bg-blue-600 text-white px-2 py-0.5 rounded-full'>+15%</span>
+                    <h1 className='text-bold text-4xl mt-2 text-gray-800'>
+                        {stat[2] ?
+                            web3.utils.fromWei(stat[2], 'ether')?.toString() : 0
+                        }
+                        <small className='text-sm text-gray-700'>ETH</small></h1> <span className='bg-blue-600 text-white px-2 py-0.5 rounded-full'>+15%</span>
                 </div>
                 <div className="flex text-md text-gray-600 justify-between mt-4">
                     <div className="flex items-center space-x-2">
@@ -44,7 +93,10 @@ export default function User() {
                     <h2 className='text-md font-medium text-gray-700'>Total envoi</h2>
                 </div>
                 <div className='flex items-center space-x-4'>
-                    <h1 className='text-bold text-4xl mt-2 text-gray-800'>4,62 <small className='text-sm text-gray-700'>ETH</small></h1> <span className='bg-blue-600 text-white px-2 py-0.5 rounded-full'>+15%</span>
+                    <h1 className='text-bold text-4xl mt-2 text-gray-800'>{
+                        stat[1] ?
+                            web3.utils.fromWei(stat[1], 'ether')?.toString() : 0
+                    } <small className='text-sm text-gray-700'>ETH</small></h1> <span className='bg-blue-600 text-white px-2 py-0.5 rounded-full'>+15%</span>
                 </div>
                 <div className="flex text-md text-gray-600 justify-between mt-4">
                     <div className="flex items-center space-x-2">
@@ -62,7 +114,7 @@ export default function User() {
                     <h2 className='text-md font-medium text-gray-700'>Total transaction</h2>
                 </div>
                 <div className='flex items-center space-x-4'>
-                    <h1 className='text-bold text-4xl mt-2 text-gray-800'>1520 <small className='text-sm text-gray-700'>Transactions</small></h1>
+                    <h1 className='text-bold text-4xl mt-2 text-gray-800'>{stat[0]?.toString()} <small className='text-sm text-gray-700'>Transactions</small></h1>
                 </div>
                 <div className="flex text-md text-gray-600 justify-between mt-4">
                     <div className="flex items-center space-x-2">
@@ -72,7 +124,7 @@ export default function User() {
                     <span className="font-bold"> 300 </span>
                 </div>
             </div>
-            <div className='bg-white hover:bg-blue-200 rounded-xl shadow-md shadow-gray-200 p-5 flex items-center justify-center'>
+            <div className='bg-white hover:bg-blue-200 rounded-xl shadow-md shadow-gray-200 p-5 flex items-center justify-center cursor-pointer' onClick={Add}>
                 <div>
                     <div className='flex items-center justify-center'>
                         <span className='bg-blue-100 text-blue-600 p-2 flex'>
@@ -82,6 +134,10 @@ export default function User() {
                     <div className='text-lg text-gray-700'>Ajouter une transaction</div>
                 </div>
             </div>
+            <Modal show={modal} onClose={closeModal}>
+                <svg className="text-xl md:text-2xl text-gray-500 absolute right-3 top-3 cursor-pointer hover:text-red-500" onClick={closeModal} xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 26 26"><g fill="currentColor"><path d="M10.172 17.243a1 1 0 1 1-1.415-1.415l7.071-7.07a1 1 0 1 1 1.415 1.414l-7.071 7.07Z" /><path d="M8.757 10.172a1 1 0 0 1 1.415-1.415l7.07 7.071a1 1 0 1 1-1.414 1.415l-7.07-7.071Z" /><path fill-rule="evenodd" d="M13 24c6.075 0 11-4.925 11-11S19.075 2 13 2S2 6.925 2 13s4.925 11 11 11Zm0 2c7.18 0 13-5.82 13-13S20.18 0 13 0S0 5.82 0 13s5.82 13 13 13Z" clip-rule="evenodd" /></g></svg>
+                <TransactionForm />
+            </Modal>
         </div>
         <div className="overflow-x-auto mt-3">
             <div className="inline-block min-w-full py-1.5 align-middle">
@@ -114,180 +170,56 @@ export default function User() {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200 py-2">
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    12/11/2019
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className='text-lg text-blue-600 font-medium bg-blue-100 py-2 px-3 rounded-full'>2050</span> ETH
-                                </td>
+                            {
+                                transactions?.map((transaction: any, index: any) => (
+                                    <tr key={index}>
+                                        <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
+                                            {index + 1}
+                                        </td>
+                                        <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
+                                            12/11/2019
+                                        </td>
+                                        <td className="py-3 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
+                                            {
+                                                users?.map((user: any, key: any) => (
+                                                    user.userAddress === transaction.sender ?
+                                                        <div className='mb-2 uppercase font-semibold' key={key}>
+                                                            {user.username}
+                                                        </div> : ''
+                                                ))
+                                            }
 
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">Lorem ipsum dolor sit amet consectetur adipisicing elit. Molestias quam eum vel quae error nulla ex repellat officia, quisquam, consectetur rem id? Ipsa earum repellendus quo facere nobis ad omnis!</td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    12/11/2019
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className='text-lg text-blue-600 font-medium bg-blue-100 py-2 px-3 rounded-full'>2050</span> ETH
-                                </td>
+                                            <span className='text-blue-600 bg-blue-100 py-2 rounded-full px-3 '>
+                                                {transaction.sender.slice(0, 4) + '...' + transaction.sender.slice(-4)}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
+                                            {
+                                                users?.map((user: any, key: any) => (
+                                                    user.userAddress === transaction.recipient ?
+                                                        <div className='mb-2 uppercase font-semibold' key={key}>
+                                                           {user.username}
+                                                        </div> : ''
+                                                ))
+                                            }
+                                            <span className='text-blue-600 bg-blue-100 py-2 rounded-full px-3 '>
+                                                {transaction.recipient.slice(0, 4) + '...' + transaction.recipient.slice(-4)}
+                                            </span>
+                                        </td>
+                                        <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
+                                            <span className='text-lg text-blue-600 font-semibold rounded-full'>{
+                                                web3.utils.fromWei(transaction.amount, 'ether')?.toString()
+                                            }</span> ETH
+                                        </td>
 
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">Lorem ipsum dolor sit amet consectetur adipisicing elit. Molestias quam eum vel quae error nulla ex repellat officia, quisquam, consectetur rem id? Ipsa earum repellendus quo facere nobis ad omnis!</td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    12/11/2019
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className='text-lg text-blue-600 font-medium bg-blue-100 py-2 px-3 rounded-full'>2050</span> ETH
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">Lorem ipsum dolor sit amet consectetur adipisicing elit. Molestias quam eum vel quae error nulla ex repellat officia, quisquam, consectetur rem id? Ipsa earum repellendus quo facere nobis ad omnis!</td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    12/11/2019
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className='text-lg text-blue-600 font-medium bg-blue-100 py-2 px-3 rounded-full'>2050</span> ETH
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">Lorem ipsum dolor sit amet consectetur adipisicing elit. Molestias quam eum vel quae error nulla ex repellat officia, quisquam, consectetur rem id? Ipsa earum repellendus quo facere nobis ad omnis!</td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    12/11/2019
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className='text-lg text-blue-600 font-medium bg-blue-100 py-2 px-3 rounded-full'>2050</span> ETH
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">Lorem ipsum dolor sit amet consectetur adipisicing elit. Molestias quam eum vel quae error nulla ex repellat officia, quisquam, consectetur rem id? Ipsa earum repellendus quo facere nobis ad omnis!</td>
-                            </tr>
-                            <tr>
-                                <td className="py-1.5 px-2 text-sm font-medium text-gray-700 whitespace-nowrap text-center">
-                                    1
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    12/11/2019
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <div className='mb-2 uppercase font-medium'>
-                                        Geedoo Kanda
-                                    </div>
-                                    <span className='text-gray-600 bg-gray-100 py-2 rounded-full px-3 '>
-                                        {slug.slice(0, 4) + '...' + slug.slice(-4)}
-                                    </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-sm text-gray-700 whitespace-nowrap text-center">
-                                    <span className='text-lg text-blue-600 font-medium bg-blue-100 py-2 px-3 rounded-full'>2050</span> ETH
-                                </td>
-
-                                <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">Lorem ipsum dolor sit amet consectetur adipisicing elit. Molestias quam eum vel quae error nulla ex repellat officia, quisquam, consectetur rem id? Ipsa earum repellendus quo facere nobis ad omnis!</td>
-                            </tr>
+                                        <td className="py-1.5 px-2 text-sm text-gray-700 max-w-[300px] text-center">
+                                            {
+                                                transaction.description
+                                            }
+                                        </td>
+                                    </tr>
+                                ))
+                            }
                         </tbody>
                     </table>
                 </div>

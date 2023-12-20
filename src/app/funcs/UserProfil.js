@@ -36,8 +36,8 @@ const initUserProfileAccounts = async (web3) => {
 
 const createProfile = async (contract, newProfile, accounts) => {
     if (contract) {
-        const { username, age, email, photo, bio, passwordHash } = newProfile;
-        await contract.methods.createProfile(username, age, email, photo, bio, passwordHash).send({ from: accounts[0] });
+        const { username, age, email, photo, bio, password } = newProfile;
+        await contract.methods.createProfile(username, age, email, photo, bio, password).send({ from: accounts[0] });
     }
 };
 
@@ -47,10 +47,10 @@ const getProfileByAddress = async (contract, userAddress) => {
     }
 };
 
-const getAllUserProfiles = async (contract, accounts) => {
+const getAllUserProfiles = async (contract) => {
     try {
-        const profiles = await contract.methods.getAllProfiles().call({ from: accounts[0] });
-        console.log('User Profiles:', profiles);
+        const profiles = await contract.methods.getAllProfiles().call();
+        return profiles;
     } catch (error) {
         console.error('Error:', error.message);
     }
